@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: meeting-agent-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    volumes:
+      - meeting-data:/app/data
+      - meeting-credentials:/app/credentials
+      - ../src:/app/src          # Live reload in dev
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  db:
+    image: postgres:16-alpine
+    container_name: meeting-agent-db
+    environment:
+      POSTGRES_DB: meeting_agent
+      POSTGRES_USER: meeting_agent
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meeting_agent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  meeting-data:
+  meeting-credentials:
+  postgres-data:
